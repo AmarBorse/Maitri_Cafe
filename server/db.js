@@ -129,6 +129,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_table ON customer_sessions(table_id, exp
 CREATE INDEX IF NOT EXISTS idx_items_category ON menu_items(category_id, sort_order);
 -- v5.2: when a table was removed (so it can be restored with its original QR code)
 ALTER TABLE tables ADD COLUMN IF NOT EXISTS removed_at TIMESTAMPTZ;
+-- v5.3: permanently deleted (QR destroyed, hidden from the restore list; kept only for order history)
+ALTER TABLE tables ADD COLUMN IF NOT EXISTS purged BOOLEAN NOT NULL DEFAULT false;
 `;
 
 const newToken = () => crypto.randomBytes(6).toString('base64url');

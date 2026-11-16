@@ -69,7 +69,7 @@ window.mountAdmin = function mountAdmin(root) {
     root.innerHTML = `<div class="a-shell">
       <aside class="a-side"><div class="a-logo"><div class="brand">Maitri</div><small>Order management</small></div>
         <nav class="a-nav" aria-label="Admin">${NAV.map(([p, l, d]) => `<a href="${p}" data-nav="${p}">${icon(d)}<span>${l}</span>${p === '/admin' ? '<span class="count" id="pend-count" hidden></span>' : ''}</a>`).join('')}</nav>
-        <div class="a-side-foot"><span class="live" id="live"><i></i>Live</span><span>Signed in as ${esc(S.me.username)} · v5.2</span><button data-act="logout">Sign out</button></div>
+        <div class="a-side-foot"><span class="live" id="live"><i></i>Live</span><span>Signed in as ${esc(S.me.username)} · v5.3</span><button data-act="logout">Sign out</button></div>
       </aside>
       <main class="a-main" id="am"></main></div><div class="print-area" id="print-area"></div>`;
     await Promise.all([loadOrders(), loadTables(), loadMenu(), API.get('/admin/settings').then(x => { S.settings = x; })]);
@@ -141,6 +141,8 @@ window.mountAdmin = function mountAdmin(root) {
   // ---------- routing ----------
   function renderRoute(isUpdate) {
     if (destroyed) return;
+    // Don't redraw under a "tap again to confirm" button; the next refresh will catch up.
+    if (isUpdate && document.querySelector('[data-armed]')) return;
     const path = Nav.path();
     const main = root.querySelector('#am');
     if (!main) return;
@@ -263,8 +265,8 @@ window.mountAdmin = function mountAdmin(root) {
         </button>`;
       }).join('')}</div>
       <section class="removed" aria-labelledby="rm-h">
-        <div class="removed-head"><h2 id="rm-h">Removed tables</h2><p>Restoring a table brings back its <b>original QR code</b>, so the card already printed for it works again.</p></div>
-        <div id="removed-list"><p class="col-empty">Loading…</p></div>
+        <div class="removed-head"><h2 id="rm-h">Removed tables</h2><p><b>Restore</b> brings a table back with its <b>original QR code</b>, so its printed card works again. <b>Delete permanently</b> destroys that QR code for good; past orders and bills are kept.</p></div>
+        <div id="removed-list">${S.removed ? removedHTML(S.removed) : '<p class="col-empty">Loading…</p>'}</div>
       </section>`;
   }
 
@@ -273,13 +275,20 @@ window.mountAdmin = function mountAdmin(root) {
     if (!host) return;
     try {
       const list = await API.get('/admin/tables/removed');
-      if (!root.querySelector('#removed-list')) return;
-      host.innerHTML = list.length
+      const sig = JSON.stringify(list);
+      if (sig === S.removedSig && host.isConnected && !host.querySelector('.col-empty')) return;
+      S.removed = list; S.removedSig = sig;
+      const now = root.querySelector('#removed-list');
+      if (!now || now.querySelector('[data-armed]')) return;
+      now.innerHTML = removedHTML(list);
+    } catch (e) { host.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+  }
+  function removedHTML(list) {
+      return list.length
         ? `<div class="removed-grid">${list.map(t => `<div class="removed-card">
             <div><b>Table ${t.table_number}</b><small>${t.removed_at ? 'Removed ' + esc(shortDate(t.removed_at)) : 'Removed earlier'}${t.last_order_at ? ' · last order ' + esc(shortDate(t.last_order_at)) : ''}</small></div>
-            <button class="btn btn-ghost btn-sm" data-act="restore-table" data-n="${t.table_number}">Restore</button></div>`).join('')}</div>`
+            <div class="removed-acts"><button class="btn btn-ghost btn-sm" data-act="restore-table" data-n="${t.table_number}">Restore</button><button class="btn btn-danger btn-sm" data-act="purge-table" data-n="${t.table_number}">Delete permanently</button></div></div>`).join('')}</div>`
         : '<p class="col-empty">No removed tables. If you remove a table by mistake, it appears here so you can restore it.</p>';
-    } catch (e) { host.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
   }
 
   async function restoreTable(n, btn) {
@@ -732,6 +741,19 @@ window.mountAdmin = function mountAdmin(root) {
       }).catch(err => toast(err.message, 'chilli'));
     }
     else if (a === 'restore-table') restoreTable(Number(t.dataset.n), t);
+    else if (a === 'purge-table') {
+      const n = Number(t.dataset.n);
+      if (!confirmTap(t, 'Tap again: delete forever')) return;
+      t.disabled = true;
+      API.del(`/admin/tables/${n}/permanent`).then(() => {
+        delete t.dataset.armed;
+        if (S.removed) { S.removed = S.removed.filter(x => x.table_number !== n); S.removedSig = JSON.stringify(S.removed); }
+        const host = root.querySelector('#removed-list');
+        if (host && S.removed) host.innerHTML = removedHTML(S.removed);
+        toast(`Table ${n} deleted permanently. Its old QR code can never be used again.`, 'ink', 5000);
+        loadRemoved();
+      }).catch(err => { toast(err.message, 'chilli', 5000); t.disabled = false; });
+    }
     else if (a === 'hday') { const d = Number(t.dataset.d); if (d === 0) S.histDay = localDay(); else { const [y, m, dd] = S.histDay.split('-').map(Number); const nd = new Date(y, m - 1, dd + d); if (localDay(nd) <= localDay()) S.histDay = localDay(nd); } renderRoute(); }
     else if (a === 'item-new') itemModal(null, Number(t.dataset.cat) || null);
     else if (a === 'item-edit') itemModal(Number(t.dataset.id));

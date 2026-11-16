@@ -618,6 +618,10 @@ h1, h2, h3 { margin: 0; font-family: var(--font); font-weight: 800; letter-spaci
 .removed-card b { display: block; font-size: 16px; font-weight: 800; }
 .removed-card small { display: block; font-size: 12.5px; color: var(--ink-3); }
 .removed .col-empty { padding: var(--s-2) 0; text-align: left; }
+.removed-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.removed-card { flex-wrap: wrap; }
+.removed-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+@media (max-width: 400px) { .removed-grid { grid-template-columns: 1fr; } }
 
 /* Toast with an action button (e.g. Undo) */
 .toast-action { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-right: 8px; }
