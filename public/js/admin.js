@@ -69,7 +69,7 @@ window.mountAdmin = function mountAdmin(root) {
     root.innerHTML = `<div class="a-shell">
       <aside class="a-side"><div class="a-logo"><div class="brand">Maitri</div><small>Order management</small></div>
         <nav class="a-nav" aria-label="Admin">${NAV.map(([p, l, d]) => `<a href="${p}" data-nav="${p}">${icon(d)}<span>${l}</span>${p === '/admin' ? '<span class="count" id="pend-count" hidden></span>' : ''}</a>`).join('')}</nav>
-        <div class="a-side-foot"><span class="live" id="live"><i></i>Live</span><span>Signed in as ${esc(S.me.username)} · v5.1</span><button data-act="logout">Sign out</button></div>
+        <div class="a-side-foot"><span class="live" id="live"><i></i>Live</span><span>Signed in as ${esc(S.me.username)} · v5.2</span><button data-act="logout">Sign out</button></div>
       </aside>
       <main class="a-main" id="am"></main></div><div class="print-area" id="print-area"></div>`;
     await Promise.all([loadOrders(), loadTables(), loadMenu(), API.get('/admin/settings').then(x => { S.settings = x; })]);
@@ -158,6 +158,7 @@ window.mountAdmin = function mountAdmin(root) {
     if (view === menuPage) bindMenu();
     if (view === qrPage) loadQr();
     if (view === settingsPage) bindSettings();
+    if (view === tablesPage) loadRemoved();
     if (view === ordersPage && S.ordersTab === 'history') loadHistory();
     if (drawerTable) renderDrawer();
   }
@@ -260,7 +261,35 @@ window.mountAdmin = function mountAdmin(root) {
           ${o ? `<p><b>#${esc(o.order_number)}</b> · ${rupees(t.orders.reduce((s, x) => s + x.total_amount, 0))}${t.orders.length > 1 ? ` · ${t.orders.length} orders` : ''}</p>` : ''}
           ${who ? `<p>${esc(who)}${o ? ' · ' + timeAgo(o.created_at) : ' · seated ' + timeAgo(t.guest.since)}</p>` : '<p style="color:var(--muted)">Ready for guests</p>'}
         </button>`;
-      }).join('')}</div>`;
+      }).join('')}</div>
+      <section class="removed" aria-labelledby="rm-h">
+        <div class="removed-head"><h2 id="rm-h">Removed tables</h2><p>Restoring a table brings back its <b>original QR code</b>, so the card already printed for it works again.</p></div>
+        <div id="removed-list"><p class="col-empty">Loading…</p></div>
+      </section>`;
+  }
+
+  async function loadRemoved() {
+    const host = root.querySelector('#removed-list');
+    if (!host) return;
+    try {
+      const list = await API.get('/admin/tables/removed');
+      if (!root.querySelector('#removed-list')) return;
+      host.innerHTML = list.length
+        ? `<div class="removed-grid">${list.map(t => `<div class="removed-card">
+            <div><b>Table ${t.table_number}</b><small>${t.removed_at ? 'Removed ' + esc(shortDate(t.removed_at)) : 'Removed earlier'}${t.last_order_at ? ' · last order ' + esc(shortDate(t.last_order_at)) : ''}</small></div>
+            <button class="btn btn-ghost btn-sm" data-act="restore-table" data-n="${t.table_number}">Restore</button></div>`).join('')}</div>`
+        : '<p class="col-empty">No removed tables. If you remove a table by mistake, it appears here so you can restore it.</p>';
+    } catch (e) { host.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+  }
+
+  async function restoreTable(n, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      await API.post(`/admin/tables/${n}/restore`);
+      await loadTables(); S.qr = null;
+      toast(`Table ${n} is back with its original QR code`, 'leaf', 4500);
+      renderRoute();
+    } catch (e) { toast(e.message, 'chilli', 5000); if (btn) btn.disabled = false; }
   }
 
   function renderDrawer() {
@@ -660,12 +689,12 @@ window.mountAdmin = function mountAdmin(root) {
     const next = (S.tables.reduce((mx, t) => Math.max(mx, t.table_number), 0) || 0) + 1;
     const m = openModal(`<form novalidate><div class="sheet-head"><h2 style="font-size:22px">Add table</h2><button type="button" class="icon-btn" data-close aria-label="Close">×</button></div>
       <div class="sheet-body form-grid"><div class="field"><label for="t-n">Table number</label><input id="t-n" name="n" class="input" type="number" min="1" max="99" value="${next}" autofocus></div>
-      <p class="fineprint">A new QR code is created for it. Print it from QR codes.</p><p class="err" data-err role="alert"></p></div>
+      <p class="fineprint">A new table gets a new QR code. If you enter the number of a <b>removed</b> table, it comes back with its <b>original</b> QR code.</p><p class="err" data-err role="alert"></p></div>
       <div class="sheet-foot"><button class="btn btn-primary btn-block btn-lg" type="submit">Add table</button></div></form>`, { label: 'Add table' });
     const f = m.el.querySelector('form');
     f.addEventListener('submit', async e => {
       e.preventDefault();
-      try { const r = await API.post('/admin/tables', { table_number: Number(f.n.value) }); await loadTables(); S.qr = null; m.close(); toast(`Table ${r.table_number} added`, 'leaf'); renderRoute(); }
+      try { const r = await API.post('/admin/tables', { table_number: Number(f.n.value) }); await loadTables(); S.qr = null; m.close(); toast(r.restored ? `Table ${r.table_number} is back with its original QR code` : `Table ${r.table_number} added. Print its new QR code from QR codes.`, 'leaf', 4500); renderRoute(); }
       catch (ex) { f.querySelector('[data-err]').textContent = ex.message; }
     });
   }
@@ -695,7 +724,14 @@ window.mountAdmin = function mountAdmin(root) {
     else if (a === 'close-drawer') closeDrawer();
     else if (a === 'invoice') openInvoice(Number(t.dataset.id));
     else if (a === 'add-table') addTableModal();
-    else if (a === 'remove-table') { if (confirmTap(t, 'Tap again to remove')) API.del('/admin/tables/' + t.dataset.n).then(loadTables).then(() => { S.qr = null; closeDrawer(); toast(`Table ${t.dataset.n} removed. Its QR code no longer works.`, 'leaf'); renderRoute(); }).catch(err => toast(err.message, 'chilli')); }
+    else if (a === 'remove-table') {
+      const n = Number(t.dataset.n);
+      if (confirmTap(t, 'Tap again to remove')) API.del('/admin/tables/' + n).then(loadTables).then(() => {
+        S.qr = null; closeDrawer(); renderRoute();
+        toast(`Table ${n} removed. Its QR code no longer works.`, 'ink', 10000, { label: 'Undo', onClick: () => restoreTable(n) });
+      }).catch(err => toast(err.message, 'chilli'));
+    }
+    else if (a === 'restore-table') restoreTable(Number(t.dataset.n), t);
     else if (a === 'hday') { const d = Number(t.dataset.d); if (d === 0) S.histDay = localDay(); else { const [y, m, dd] = S.histDay.split('-').map(Number); const nd = new Date(y, m - 1, dd + d); if (localDay(nd) <= localDay()) S.histDay = localDay(nd); } renderRoute(); }
     else if (a === 'item-new') itemModal(null, Number(t.dataset.cat) || null);
     else if (a === 'item-edit') itemModal(Number(t.dataset.id));

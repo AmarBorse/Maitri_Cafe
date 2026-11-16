@@ -45,14 +45,24 @@
     return byCat;
   }
 
-  function toast(message, tone = 'ink', ms = 3200) {
+  // action (optional): { label: 'Undo', onClick() {} } adds a button to the message.
+  function toast(message, tone = 'ink', ms = 3200, action) {
     let host = document.getElementById('toasts');
     if (!host) { host = document.createElement('div'); host.id = 'toasts'; host.setAttribute('aria-live', 'polite'); document.body.appendChild(host); }
     const t = document.createElement('div');
-    t.className = 'toast toast-' + tone;
-    t.textContent = message;
+    t.className = 'toast toast-' + tone + (action ? ' toast-action' : '');
+    const text = document.createElement('span');
+    text.textContent = message;
+    t.appendChild(text);
+    const hide = () => { if (!t.isConnected || t.classList.contains('out')) return; t.classList.add('out'); setTimeout(() => t.remove(), 300); };
+    if (action) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'toast-btn'; b.textContent = action.label;
+      b.addEventListener('click', () => { b.disabled = true; hide(); action.onClick(); });
+      t.appendChild(b);
+    }
     host.appendChild(t);
-    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
+    setTimeout(hide, ms);
   }
 
   // Two-note chime via Web Audio (only plays after any user interaction, per browser policy).

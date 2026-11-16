@@ -608,6 +608,22 @@ h1, h2, h3 { margin: 0; font-family: var(--font); font-weight: 800; letter-spaci
 .login-form h1 { font-size: var(--t-2xl); }
 .hint { margin: 0; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font-size: 13px; color: var(--ink-2); }
 
+/* Removed tables (restore with the original QR code) */
+.removed { margin-top: var(--s-8); padding: var(--s-5); border: 1px dashed var(--line-strong); border-radius: var(--r-lg); background: var(--surface); }
+.removed-head h2 { font-size: 17px; }
+.removed-head p { margin: 4px 0 var(--s-4); font-size: var(--t-sm); color: var(--ink-3); }
+.removed-head b { color: var(--ink-2); }
+.removed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.removed-card { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); animation: mIn .3s var(--ease-out) both; }
+.removed-card b { display: block; font-size: 16px; font-weight: 800; }
+.removed-card small { display: block; font-size: 12.5px; color: var(--ink-3); }
+.removed .col-empty { padding: var(--s-2) 0; text-align: left; }
+
+/* Toast with an action button (e.g. Undo) */
+.toast-action { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-right: 8px; }
+.toast-btn { flex: none; min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--r-sm); background: var(--accent-on-dark); color: var(--espresso); font-weight: 800; font-size: 14px; cursor: pointer; }
+.toast-btn:hover { filter: brightness(1.08); }
+
 /* ---------------------------------------------------------------------
    7. INVOICE & PRINT (receipt layout: 80 mm printers and A4)
    --------------------------------------------------------------------- */

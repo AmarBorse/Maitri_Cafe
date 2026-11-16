@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const { q, one, tx, init, newToken } = require('./db');
 const storage = require('./storage');
 
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const ACTIVE = ['PENDING', 'APPROVED', 'PREPARING', 'READY'];
 const NEXT_STATUS = { PENDING: ['APPROVED', 'REJECTED'], APPROVED: ['PREPARING', 'REJECTED'], PREPARING: ['READY'], READY: ['SERVED'] };
@@ -350,19 +350,35 @@ admin.post('/tables', wrap(async (req, res) => {
   n = cleanTableNumber(n);
   const existing = await one('SELECT * FROM tables WHERE table_number = $1', [n]);
   if (existing && existing.active) throw httpError(409, `Table ${n} already exists.`);
-  if (existing) await q(`UPDATE tables SET active = true, status = 'AVAILABLE', qr_token = $1 WHERE id = $2`, [newToken(), existing.id]);
+  // A removed table comes back with its ORIGINAL QR code, so printed cards work again.
+  if (existing) await q(`UPDATE tables SET active = true, status = 'AVAILABLE', removed_at = NULL WHERE id = $1`, [existing.id]);
   else await q('INSERT INTO tables (table_number, qr_token) VALUES ($1, $2)', [n, newToken()]);
-  res.status(201).json({ table_number: n });
+  res.status(201).json({ table_number: n, restored: Boolean(existing) });
 }));
 admin.delete('/tables/:n', wrap(async (req, res) => {
   const t = await tableByNumber(cleanTableNumber(req.params.n));
   if (!t) throw httpError(404, 'Table not found.');
   if (await openOrderCount('table_id', t.id)) throw httpError(409, `Table ${t.table_number} has active orders. Serve or reject them first.`);
   await tx(async run => {
-    await run('UPDATE tables SET active = false WHERE id = $1', [t.id]);
+    await run('UPDATE tables SET active = false, removed_at = now() WHERE id = $1', [t.id]);
     await run('UPDATE customer_sessions SET expires_at = now() WHERE table_id = $1 AND expires_at > now()', [t.id]);
   });
   res.json({ ok: true });
+}));
+// Removed tables (newest first) and restoring one with its original QR code.
+admin.get('/tables/removed', wrap(async (req, res) => {
+  const rows = await q(`SELECT t.table_number, t.removed_at,
+      (SELECT MAX(o.created_at) FROM orders o WHERE o.table_id = t.id) AS last_order_at
+    FROM tables t WHERE NOT t.active ORDER BY t.removed_at DESC NULLS LAST, t.table_number`);
+  res.json(rows.map(r => ({ table_number: r.table_number, removed_at: iso(r.removed_at), last_order_at: iso(r.last_order_at) })));
+}));
+admin.post('/tables/:n/restore', wrap(async (req, res) => {
+  const n = cleanTableNumber(req.params.n);
+  const t = await one('SELECT * FROM tables WHERE table_number = $1', [n]);
+  if (!t) throw httpError(404, `Table ${n} was never created.`);
+  if (t.active) throw httpError(409, `Table ${n} is already active.`);
+  await q(`UPDATE tables SET active = true, status = 'AVAILABLE', removed_at = NULL WHERE id = $1`, [t.id]);
+  res.json({ table_number: n, restored: true });
 }));
 admin.post('/tables/:n/clear', wrap(async (req, res) => {
   const t = await tableByNumber(cleanTableNumber(req.params.n));

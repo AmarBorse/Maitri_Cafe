@@ -127,6 +127,8 @@ CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_table ON customer_sessions(table_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_items_category ON menu_items(category_id, sort_order);
+-- v5.2: when a table was removed (so it can be restored with its original QR code)
+ALTER TABLE tables ADD COLUMN IF NOT EXISTS removed_at TIMESTAMPTZ;
 `;
 
 const newToken = () => crypto.randomBytes(6).toString('base64url');
