@@ -56,7 +56,7 @@ window.mountLanding = function mountLanding(root) {
             <p class="lp-eyebrow reveal">Our menu</p>
             <h2 id="lp-menu-h" class="lp-h2 reveal">Something for every craving</h2>
             <p class="lp-sub reveal">Made fresh, served fast. Tap a category to see everything we make.</p>
-            <div class="lp-grid" id="lp-grid"><div class="sk lp-sk big"></div>${'<div class="sk lp-sk"></div>'.repeat(7)}</div>
+            <div class="lp-icons" id="lp-grid">${'<div class="sk lp-sk-ic"></div>'.repeat(6)}</div>
           </div>
         </section>
 
@@ -92,26 +92,10 @@ window.mountLanding = function mountLanding(root) {
     if (groups.length) {
       root.querySelector('#lp-stats').innerHTML = `<div><b>${items}+</b><span>dishes & drinks</span></div><div><b>${groups.length}</b><span>categories</span></div>`;
     }
-    // Bento layout: card 1 is a big feature card; a few others go wide so every row is full,
-    // whatever the number of categories (separately for phone 2-col, tablet 3-col, desktop 4-col).
-    const n = groups.length;
-    const wideSet = (cols, used) => { const extra = (cols - ((n + used) % cols)) % cols; const out = new Set(); for (let k = 0; k < extra; k++) out.add(n - 1 - k * 3); return out; };
-    const wideM = wideSet(2, 1), wideT = wideSet(3, 3), wideD = wideSet(4, 3);
-    const ARROW = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-    grid.innerHTML = n ? groups.map((g, i) => {
-      const cls = ['lp-card', 'reveal', i === 0 ? 'big' : '', i && wideM.has(i) ? 'wide-m' : '', i && wideT.has(i) ? 'wide-t' : '', i && wideD.has(i) ? 'wide-d' : ''].filter(Boolean).join(' ');
-      const teaser = i === 0 ? g.entries.slice(0, 3).map(e => esc(e.name)).join(' · ') + (g.entries.length > 3 ? ' & more' : '') : '';
-      return `<button class="${cls}" style="--i:${i % 4}" data-cat="${esc(g.slug)}" aria-label="${esc(g.name)}: ${g.entries.length} items">
-        <span class="lp-card-img"><img src="${esc(img(g.image))}" alt="" ${i < 4 ? '' : 'loading="lazy"'} decoding="async" width="300" height="225"></span>
-        <span class="lp-card-body">
-          ${i === 0 ? '<span class="lp-feature">Featured</span>' : ''}
-          <b>${esc(g.name)}</b>
-          ${teaser ? `<span class="lp-teaser">${teaser}</span>` : ''}
-          <small>${g.entries.length} ${g.entries.length === 1 ? 'item' : 'items'}</small>
-        </span>
-        <span class="lp-go">${ARROW}</span>
-      </button>`;
-    }).join('') : '<p class="col-empty">The menu is being updated. Please check back soon.</p>';
+    grid.innerHTML = groups.length ? groups.map((g, i) => `<button class="lp-ic reveal" style="--i:${i % 6}" data-cat="${esc(g.slug)}" aria-label="${esc(g.name)}: ${g.entries.length} items">
+        <span class="lp-ic-img"><img src="${esc(img(g.image))}" alt="" ${i < 6 ? '' : 'loading="lazy"'} decoding="async" width="124" height="124"></span>
+        <b>${esc(g.name)}</b><small>${g.entries.length} ${g.entries.length === 1 ? 'item' : 'items'}</small>
+      </button>`).join('') : '<p class="col-empty">The menu is being updated. Please check back soon.</p>';
     const visit = [];
     if (settings.address) visit.push(`<a class="lp-visit-row" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((settings.cafe_name || 'Maitri Cafe') + ' ' + settings.address)}" target="_blank" rel="noopener">${ICONS.pin}<span>${esc(settings.address)}</span></a>`);
     if (settings.phone) visit.push(`<a class="lp-visit-row" href="tel:${esc(settings.phone.replace(/[^\d+]/g, ''))}">${ICONS.phone}<span>${esc(settings.phone)}</span></a>`);
