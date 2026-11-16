@@ -1,10 +1,8 @@
 /* Public landing page (maitricafe.hiresnix.co.in with no table QR).
    Browse-only: shows the cafe, how to order, the menu and contact details. Ordering happens via the table QR. */
 window.mountLanding = function mountLanding(root) {
-  const { creditHTML, esc, rupees, groupMenu, img, openModal } = window.MC;
+  const { creditHTML, esc, groupMenu, img, openModal } = window.MC;
   let groups = [], settings = {}, io = null;
-  // Add-ons (e.g. "Extra Cheese (add-on)") are not dishes, so they don't set the "from" price.
-  const priced = e => !/add-?on/i.test(e.name);
   const ICONS = {
     seat: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h16M6 10v9M18 10v9M8 6h8"/></svg>',
     scan: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 9h2v2H9zM13 13h2v2h-2zM13 9h2M9 13v2"/></svg>',
@@ -57,7 +55,7 @@ window.mountLanding = function mountLanding(root) {
           <div class="lp-wrap">
             <p class="lp-eyebrow reveal">Our menu</p>
             <h2 id="lp-menu-h" class="lp-h2 reveal">Something for every craving</h2>
-            <p class="lp-sub reveal">Made fresh, served fast. Tap a category to see every item and price.</p>
+            <p class="lp-sub reveal">Made fresh, served fast. Tap a category to see everything we make.</p>
             <div class="lp-grid" id="lp-grid"><div class="sk lp-sk big"></div>${'<div class="sk lp-sk"></div>'.repeat(7)}</div>
           </div>
         </section>
@@ -91,9 +89,8 @@ window.mountLanding = function mountLanding(root) {
     const grid = root.querySelector('#lp-grid');
     if (!grid) return;
     const items = groups.reduce((n, g) => n + g.entries.length, 0);
-    const prices = groups.flatMap(g => g.entries.filter(priced).flatMap(e => (e.variants || [e.item]).filter(x => x.available).map(x => x.price)));
     if (groups.length) {
-      root.querySelector('#lp-stats').innerHTML = `<div><b>${items}+</b><span>dishes & drinks</span></div><div><b>${groups.length}</b><span>categories</span></div>${prices.length ? `<div><b>${rupees(Math.min(...prices))}</b><span>starting price</span></div>` : ''}`;
+      root.querySelector('#lp-stats').innerHTML = `<div><b>${items}+</b><span>dishes & drinks</span></div><div><b>${groups.length}</b><span>categories</span></div>`;
     }
     // Bento layout: card 1 is a big feature card; a few others go wide so every row is full,
     // whatever the number of categories (separately for phone 2-col, tablet 3-col, desktop 4-col).
@@ -102,12 +99,10 @@ window.mountLanding = function mountLanding(root) {
     const wideM = wideSet(2, 1), wideT = wideSet(3, 3), wideD = wideSet(4, 3);
     const ARROW = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
     grid.innerHTML = n ? groups.map((g, i) => {
-      const p = g.entries.filter(priced).flatMap(e => (e.variants || [e.item]).filter(x => x.available).map(x => x.price));
       const cls = ['lp-card', 'reveal', i === 0 ? 'big' : '', i && wideM.has(i) ? 'wide-m' : '', i && wideT.has(i) ? 'wide-t' : '', i && wideD.has(i) ? 'wide-d' : ''].filter(Boolean).join(' ');
       const teaser = i === 0 ? g.entries.slice(0, 3).map(e => esc(e.name)).join(' · ') + (g.entries.length > 3 ? ' & more' : '') : '';
-      return `<button class="${cls}" style="--i:${i % 4}" data-cat="${esc(g.slug)}" aria-label="${esc(g.name)}: ${g.entries.length} items${p.length ? ', from ' + rupees(Math.min(...p)) : ''}">
+      return `<button class="${cls}" style="--i:${i % 4}" data-cat="${esc(g.slug)}" aria-label="${esc(g.name)}: ${g.entries.length} items">
         <span class="lp-card-img"><img src="${esc(img(g.image))}" alt="" ${i < 4 ? '' : 'loading="lazy"'} decoding="async" width="300" height="225"></span>
-        ${p.length ? `<span class="lp-price-tag">from <b>${rupees(Math.min(...p))}</b></span>` : '<span class="lp-price-tag off">Unavailable</span>'}
         <span class="lp-card-body">
           ${i === 0 ? '<span class="lp-feature">Featured</span>' : ''}
           <b>${esc(g.name)}</b>
@@ -131,10 +126,10 @@ window.mountLanding = function mountLanding(root) {
       const opts = e.variants || [e.item];
       const off = opts.every(x => !x.available);
       return `<li class="lp-item ${off ? 'off' : ''}"><span><span class="veg" title="Vegetarian"></span>${esc(e.name)}${off ? ' <small>Currently unavailable</small>' : ''}</span>
-        <span class="lp-price">${opts.map(x => (x.variant ? `<small>${esc(x.variant)}</small> ` : '') + rupees(x.price)).join(' · ')}</span></li>`;
+        ${opts.some(x => x.variant) ? `<span class="lp-vars">${opts.map(x => `<small>${esc(x.variant)}</small>`).join('')}</span>` : ''}</li>`;
     }).join('');
     openModal(`<div class="grab" aria-hidden="true"></div>
-      <div class="lp-modal-hero"><img src="${esc(img(g.image))}" alt=""><h2>${esc(g.name)}</h2><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="lp-modal-head"><img src="${esc(img(g.image))}" alt="" width="84" height="84"><div><h2>${esc(g.name)}</h2><p>${g.entries.length} ${g.entries.length === 1 ? 'item' : 'items'}</p></div><button class="icon-btn" data-close aria-label="Close">×</button></div>
       <div class="sheet-body"><ul class="lp-items">${rows}</ul></div>
       <div class="sheet-foot lp-modal-foot">${ICONS.scan}<span>To order, scan the QR code on your table at the cafe.</span></div>`, { label: g.name + ' menu' });
   }

@@ -1051,3 +1051,16 @@ body { background-color: var(--canvas); background-image: var(--pattern-light); 
 .lp-card.reveal.in { animation: lpCardIn .7s var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 90ms); }
 @keyframes lpCardIn { from { opacity: 0; transform: translate3d(0, 28px, 0) scale(.97); } }
 @media (prefers-reduced-motion: reduce) { .lp-card.reveal:not(.in) { opacity: 1; } }
+
+/* Category popup header: compact photo thumbnail (photos are small, so never stretch them) */
+.lp-modal-head { flex: none; display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4) var(--s-5); border-bottom: 1px solid var(--line); }
+.lp-modal-head img { flex: none; width: 84px; height: 84px; border-radius: var(--r-lg); object-fit: cover; box-shadow: var(--e-2); }
+.lp-modal-head div { flex: 1; min-width: 0; }
+.lp-modal-head h2 { font-size: 24px; }
+.lp-modal-head p { margin: 2px 0 0; font-size: var(--t-sm); font-weight: 600; color: var(--ink-3); }
+.lp-vars { flex: none; display: flex; gap: 6px; }
+.lp-vars small { padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.lp-item { align-items: center; }
+/* Keep low-resolution menu photos sharp on large cards */
+.lp-card-img img { image-rendering: auto; }
+@media (min-width: 1024px) { .lp-card.big .lp-card-img img { object-position: center 45%; } }
