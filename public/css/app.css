@@ -951,7 +951,6 @@ body { background-color: var(--canvas); background-image: var(--pattern-light); 
 .lp-foot { margin-top: var(--s-12); padding: var(--s-10) var(--s-5) var(--s-8); text-align: center; background: var(--espresso) var(--pattern-dark); background-size: 180px 180px; color: var(--on-dark-muted); }
 .lp-foot .brand { font-size: 48px; color: #FFF8F0; }
 .lp-foot p { margin: 6px 0 var(--s-4); }
-.lp-staff { color: var(--on-dark); font-size: 13px; font-weight: 700; }
 .lp-foot .credit { color: var(--on-dark-muted); }
 .lp-foot .credit a { color: var(--accent-on-dark); }
 

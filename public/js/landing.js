@@ -78,7 +78,6 @@ window.mountLanding = function mountLanding(root) {
         <footer class="lp-foot">
           <span class="brand">Maitri</span>
           <p>Good Food ~ Good Vibes ~ Always</p>
-          <a href="/admin" class="lp-staff">Staff login</a>
           ${creditHTML()}
         </footer>
       </div>`;
